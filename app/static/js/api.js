@@ -187,6 +187,14 @@ export const deleteReleases = async (ids) => {
     });
 };
 
+export const ignoreReleases = async (ids) => {
+    return fetch('/api/releases/ignore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    });
+};
+
 export const updateReleaseSource = async (ids, sourceName) => {
     return fetch('/api/releases/source', {
         method: 'PATCH',

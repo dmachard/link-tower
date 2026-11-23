@@ -186,3 +186,51 @@ async def test_by_source_performance_large_dataset():
     finally:
         p.stop()
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_ignore_releases_hides_and_prevents_reinsert():
+    from app.api.releases import ignore_releases, DeleteRequest
+    from app.core.link import LinkManager
+    from sqlalchemy import select
+    from unittest.mock import AsyncMock
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    p = patch("app.services.release_service.settings")
+    mock_settings = p.start()
+    mock_settings.SCRAPER_SOURCES = [{"name": "SrcA", "enabled": True}]
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with Session() as async_db:
+            link = DownloadLink(
+                url="https://1fichier.com/?ignoreme",
+                hoster="1fichier",
+                status="alive",
+                filename="Saison.1.rar",
+                title="Saison 1 rar",
+                category="series",
+                source_name="SrcA",
+            )
+            async_db.add(link)
+            await async_db.commit()
+            await async_db.refresh(link)
+
+            res = await ignore_releases(DeleteRequest(ids=[link.id]), db=async_db)
+            assert res == {"ok": True, "ignored": 1}
+
+            by_src = await ReleaseService.get_releases_by_source(async_db, recent=False)
+            assert by_src["rows"] == []
+
+            lm = LinkManager()
+            lm.hoster.check_links = AsyncMock(return_value={
+                link.url: {"status": "alive", "host": "1fichier", "filename": "Saison.1.rar", "size": 100}
+            })
+            await lm.check_links(async_db, [link.url], "https://src", "SrcA", force=True)
+            row = (await async_db.execute(select(DownloadLink).where(DownloadLink.id == link.id))).scalar_one()
+            assert row.status == "ignored"
+    finally:
+        p.stop()
+        await engine.dispose()
+

@@ -141,6 +141,22 @@ async def delete_releases(req: DeleteRequest, db: AsyncSession = Depends(get_db)
     
     return {"ok": True, "deleted": result.rowcount}
 
+@router.post("/releases/ignore")
+async def ignore_releases(req: DeleteRequest, db: AsyncSession = Depends(get_db)):
+    """Marks download links as ignored so they stay hidden and are skipped on future scans."""
+    if not req.ids:
+        return {"ok": True, "ignored": 0}
+
+    stmt = (
+        update(DownloadLink)
+        .where(DownloadLink.id.in_(req.ids))
+        .values(status="ignored")
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    release_service.invalidate_cache()
+    return {"ok": True, "ignored": result.rowcount}
+
 class UpdateSourceRequest(BaseModel):
     ids: List[int]
     source_name: str

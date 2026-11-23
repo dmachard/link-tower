@@ -2,7 +2,7 @@ import { TRANSLATIONS } from './i18n.js';
 import { state } from './state.js';
 import { formatSeasonEp, formatLangs, formatBytes, beautifyHoster, getImdbUrl, renderRatingDots, formatDate } from './helpers.js';
 import { renderPagination } from './pagination.js';
-import { downloadUrls, deleteReleases, fetchData, updateReleaseSource } from './api.js';
+import { downloadUrls, deleteReleases, ignoreReleases, fetchData, updateReleaseSource } from './api.js';
 import { showConfirm } from './modals.js';
 
 // ─── Release Card ─────────────────────────────────────────────────────────────
@@ -625,6 +625,24 @@ export const openReleaseModal = (group, currentSource = '') => {
         } catch (err) { console.error(err); }
     };
     actionsEl.appendChild(btnCopyMd);
+
+    const btnIgnore = document.createElement('button');
+    btnIgnore.type = 'button';
+    btnIgnore.className = 'btn-action-round';
+    btnIgnore.title = TRANSLATIONS[state.language].btn_ignore || 'Ignorer';
+    btnIgnore.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    btnIgnore.onclick = async () => {
+        const title = TRANSLATIONS[state.language].btn_ignore || 'Ignorer';
+        const msg = TRANSLATIONS[state.language].confirm_ignore_release || 'Ignorer cette release ?';
+        if (await showConfirm(title, msg)) {
+            const res = await ignoreReleases(collectGroupIds(group));
+            if (res.ok) {
+                modal.classList.remove('active');
+                fetchData('releases');
+            }
+        }
+    };
+    actionsEl.appendChild(btnIgnore);
 
     const btnDelete = document.createElement('button');
     btnDelete.type = 'button';

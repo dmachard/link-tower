@@ -242,6 +242,9 @@ class LinkManager:
                         existing = q.scalar_one_or_none()
                         
                         if existing:
+                            if existing.status == "ignored":
+                                inserted = True
+                                break
                             existing.status = status
                             existing.filename = final_filename
                             # Only update titles if we have a new override, or if they were empty
