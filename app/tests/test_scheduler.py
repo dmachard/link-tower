@@ -512,3 +512,22 @@ async def test_scheduler_auto_download_genre_not_matched():
         mock_dl_task.assert_called_once_with(["https://hoster.com/file1"], is_auto=True)
         print("[TEST] Genre-matched non-excluded auto-download verified.")
 
+
+def test_next_interval_seconds_jitter():
+    from app.core.scheduler import _next_interval_seconds
+
+    with patch("app.core.scheduler.settings") as mock_settings:
+        mock_settings.SCAN_INTERVAL_MINUTES = 60
+        mock_settings.SCAN_INTERVAL_JITTER_MINUTES = 0
+        assert _next_interval_seconds() == 3600.0
+
+        mock_settings.SCAN_INTERVAL_JITTER_MINUTES = 10
+        samples = [_next_interval_seconds() for _ in range(50)]
+        assert all(3000.0 <= s <= 4200.0 for s in samples)
+        assert len(set(samples)) > 1
+
+        mock_settings.SCAN_INTERVAL_MINUTES = 2
+        mock_settings.SCAN_INTERVAL_JITTER_MINUTES = 10
+        assert all(_next_interval_seconds() >= 60.0 for _ in range(50))
+
+

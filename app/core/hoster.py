@@ -253,11 +253,13 @@ class Hoster:
                         try:
                             res = await mapper.check(link, session)
                             status = res.get("status", "unknown").upper()
-                            filename = res.get("filename", "N/A")
-                            print(f"[HOSTER] {label} | {status} | {filename or link[:40]}")
+                            detail = res.get("filename") or link
+                            if status == "ERROR":
+                                detail = f"{link} ({res['error']})" if res.get("error") else link
+                            print(f"[HOSTER] {label} | {status} | {detail}")
                             return link, res
                         except Exception as e:
-                            print(f"[HOSTER] {label} | ERROR | {link[:40]}: {e}")
+                            print(f"[HOSTER] {label} | ERROR | {link}: {e}")
                             return link, {"status": "error", "error": str(e)}
 
                 tasks = [wrapped_check(link, mapper) for link, mapper in direct_links]

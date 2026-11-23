@@ -17,7 +17,6 @@ async def test_by_source_lightweight_and_detail():
     mock_settings = p.start()
     mock_settings.SCRAPER_SOURCES = [{"name": "SrcA", "enabled": True}]
     mock_settings.SCAN_INTERVAL_MINUTES = 60
-    mock_settings.SCAN_NOVELTY_MULTIPLIER = 2
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -116,7 +115,6 @@ async def test_by_source_performance_large_dataset():
     mock_settings = p.start()
     mock_settings.SCRAPER_SOURCES = [{"name": f"Src{i}", "enabled": True} for i in range(6)]
     mock_settings.SCAN_INTERVAL_MINUTES = 60
-    mock_settings.SCAN_NOVELTY_MULTIPLIER = 2
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

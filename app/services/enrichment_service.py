@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DownloadLink, MediaMetadata
 from app.services.tmdb import tmdb_service
-from app.services.translation import translation_service
 from app.services.parser_service import parser_service
 from app.core.config import settings
 
@@ -98,9 +97,7 @@ class EnrichmentService:
                 # Prep plots
                 plot_en = res_data.get("plot_en") or res_data.get("plot")
                 plot_fr = res_data.get("plot_fr")
-                if plot_en and not plot_fr:
-                    plot_fr = await translation_service.translate(plot_en)
-                elif not plot_en and plot_fr:
+                if not plot_en and plot_fr:
                     plot_en = plot_fr
                 
                 if not existing_meta:

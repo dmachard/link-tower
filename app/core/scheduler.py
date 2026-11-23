@@ -246,16 +246,25 @@ def is_in_scan_window():
         # Crosses midnight (e.g. 6 to 0)
         return current_hour >= start or current_hour < end
 
+def _next_interval_seconds() -> float:
+    import random
+    base = settings.SCAN_INTERVAL_MINUTES * 60
+    jitter = max(0, getattr(settings, "SCAN_INTERVAL_JITTER_MINUTES", 0)) * 60
+    if jitter == 0:
+        return float(base)
+    return max(60.0, base + random.uniform(-jitter, jitter))
+
 async def scheduler_loop():
     """Main scheduler loop."""
-    print(f"[SCHEDULER] Starting loop with global interval: {settings.SCAN_INTERVAL_MINUTES} minutes")
+    jitter_min = max(0, getattr(settings, "SCAN_INTERVAL_JITTER_MINUTES", 0))
+    print(f"[SCHEDULER] Starting loop with global interval: {settings.SCAN_INTERVAL_MINUTES} minutes (±{jitter_min}m jitter)")
     print(f"[SCHEDULER] Global allowed window: {settings.SCAN_START_HOUR:02d}h to {settings.SCAN_END_HOUR:02d}h")
     
     import time
     from datetime import datetime
     
     last_run_dates = {}  # scraper_name -> YYYY-MM-DD
-    last_run_times = {}  # scraper_name -> timestamp of last run
+    next_run_times = {}  # scraper_name -> timestamp of next scheduled run
     first_run = True
     last_status_print = 0
     
@@ -295,13 +304,12 @@ async def scheduler_loop():
                             await run_scraper(scraper)
                             run_any = True
                 else:
-                    # Interval scraper: runs in global window, at the specified interval
+                    # Interval scraper: runs in global window, at the specified interval (+/- jitter)
                     if is_in_scan_window():
-                        last_run = last_run_times.get(scraper.name, 0)
-                        interval_seconds = settings.SCAN_INTERVAL_MINUTES * 60
-                        if current_time - last_run >= interval_seconds:
+                        next_run = next_run_times.get(scraper.name, 0)
+                        if current_time >= next_run:
                             print(f"[SCHEDULER] [{datetime_now()}] Triggering interval scraper: {scraper.name}")
-                            last_run_times[scraper.name] = current_time
+                            next_run_times[scraper.name] = current_time + _next_interval_seconds()
                             await run_scraper(scraper)
                             run_any = True
             
@@ -337,10 +345,9 @@ async def scheduler_loop():
                         else:
                             next_runs_info.append(f"{s.name} at {s_hour:02d}:00 tomorrow")
                     else:
-                        last_run = last_run_times.get(s.name, 0)
                         if is_in_scan_window():
-                            elapsed = current_time - last_run
-                            remaining = max(0.0, (settings.SCAN_INTERVAL_MINUTES * 60) - elapsed)
+                            next_run = next_run_times.get(s.name, 0)
+                            remaining = max(0.0, next_run - current_time)
                             next_runs_info.append(f"{s.name} in {remaining/60:.1f}m")
                         else:
                             next_runs_info.append(f"{s.name} (waiting for scan window)")

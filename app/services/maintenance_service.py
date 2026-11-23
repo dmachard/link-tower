@@ -8,7 +8,6 @@ from app.db.models import DownloadLink, ScrapedURL, MediaMetadata
 from app.services.parser_service import parser_service
 from app.services.enrichment_service import enrichment_service
 from app.services.tmdb import tmdb_service
-from app.services.translation import translation_service
 from app.core.config import settings
 from pathlib import Path
 import html
@@ -239,11 +238,7 @@ class MaintenanceService:
                         else: meta.poster_path = ""
                     
                     if not meta.plot_fr:
-                        plot_en = res_data.get("plot_en") or res_data.get("plot")
-                        plot_fr = res_data.get("plot_fr")
-                        if plot_en and not plot_fr:
-                            plot_fr = await translation_service.translate(plot_en)
-                        meta.plot_fr = plot_fr or ""
+                        meta.plot_fr = res_data.get("plot_fr") or ""
                     
                     if not meta.title_fr: meta.title_fr = res_data.get("title_fr") or ""
                     if not meta.rating: meta.rating = res_data.get("rating") or ""

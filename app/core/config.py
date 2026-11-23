@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     
     # Scraper Settings
     SCAN_INTERVAL_MINUTES: int = _yaml_config.get("scan_interval_minutes", 15)
-    SCAN_NOVELTY_MULTIPLIER: int = _yaml_config.get("scan_novelty_multiplier", 2)
+    SCAN_INTERVAL_JITTER_MINUTES: int = _yaml_config.get("scan_interval_jitter_minutes", 10)
     CONCURRENT_HOSTER_CHECKS: int = _yaml_config.get("concurrent_hoster_checks", 10)
     SOURCE_NO_NEW_THRESHOLD_DAYS: int = _yaml_config.get("source_no_new_threshold_days", 2)
     TEMPLATE_MATCH_MIN_CONFIDENCE: float = float(_yaml_config.get("template_match_min_confidence", 0.50))
@@ -94,10 +94,6 @@ class Settings(BaseSettings):
     
     _yaml_tmdb = _yaml_config.get("tmdb", {})
     TMDB_API_KEY: str = os.getenv("TMDB_API_KEY", _yaml_tmdb.get("api_key", ""))
-    
-    # Translation Settings (MyMemory)
-    _yaml_mymemory = _yaml_config.get("mymemory", {})
-    MYMEMORY_EMAIL: str = _yaml_mymemory.get("email", "dmachard@gmail.com")
     
     # Git Configuration
     _yaml_git = _yaml_config.get("git", {})
