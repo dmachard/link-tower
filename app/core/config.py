@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     SCAN_INTERVAL_MINUTES: int = _yaml_config.get("scan_interval_minutes", 15)
     SCAN_INTERVAL_JITTER_MINUTES: int = _yaml_config.get("scan_interval_jitter_minutes", 10)
     CONCURRENT_HOSTER_CHECKS: int = _yaml_config.get("concurrent_hoster_checks", 10)
+    HOSTER_CHECK_DELAY_SECONDS: float = float(_yaml_config.get("hoster_check_delay_seconds", 1.0))
     SOURCE_NO_NEW_THRESHOLD_DAYS: int = _yaml_config.get("source_no_new_threshold_days", 2)
     TEMPLATE_MATCH_MIN_CONFIDENCE: float = float(_yaml_config.get("template_match_min_confidence", 0.50))
     BROWSER_URL: Optional[str] = _yaml_config.get("browser_url", None)

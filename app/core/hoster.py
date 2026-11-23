@@ -210,6 +210,20 @@ class GenericHoster:
                 await session.close()
 
 
+_GLOBAL_HOSTER_SEMAPHORE: Optional[asyncio.Semaphore] = None
+_GLOBAL_HOSTER_SEMAPHORE_LOOP: Optional[asyncio.AbstractEventLoop] = None
+
+
+def _get_global_hoster_semaphore() -> asyncio.Semaphore:
+    global _GLOBAL_HOSTER_SEMAPHORE, _GLOBAL_HOSTER_SEMAPHORE_LOOP
+    loop = asyncio.get_running_loop()
+    if _GLOBAL_HOSTER_SEMAPHORE is None or _GLOBAL_HOSTER_SEMAPHORE_LOOP is not loop:
+        limit = max(1, int(getattr(settings, "CONCURRENT_HOSTER_CHECKS", 10) or 1))
+        _GLOBAL_HOSTER_SEMAPHORE = asyncio.Semaphore(limit)
+        _GLOBAL_HOSTER_SEMAPHORE_LOOP = loop
+    return _GLOBAL_HOSTER_SEMAPHORE
+
+
 class Hoster:
     """
     Orchestrates link verification by dispatching links to YAML-configured hosters.
@@ -222,7 +236,6 @@ class Hoster:
                 generic = GenericHoster(cfg)
                 for dom in generic.domains:
                     self.direct_mappers[dom] = generic
-        self.semaphore = asyncio.Semaphore(settings.CONCURRENT_HOSTER_CHECKS)
 
     def _get_domain(self, url: str) -> str:
         try:
@@ -246,9 +259,11 @@ class Hoster:
 
         if direct_links:
             print(f"[HOSTER] Checking {len(direct_links)} links...")
+            sem = _get_global_hoster_semaphore()
+            delay = float(getattr(settings, "HOSTER_CHECK_DELAY_SECONDS", 0) or 0)
             async with aiohttp.ClientSession() as session:
                 async def wrapped_check(link, mapper):
-                    async with self.semaphore:
+                    async with sem:
                         label = getattr(mapper, "name", None) or mapper.__name__[:-7]
                         try:
                             res = await mapper.check(link, session)
@@ -261,6 +276,9 @@ class Hoster:
                         except Exception as e:
                             print(f"[HOSTER] {label} | ERROR | {link}: {e}")
                             return link, {"status": "error", "error": str(e)}
+                        finally:
+                            if delay > 0:
+                                await asyncio.sleep(delay)
 
                 tasks = [wrapped_check(link, mapper) for link, mapper in direct_links]
                 for coro in asyncio.as_completed(tasks):
